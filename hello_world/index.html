@@ -3,18 +3,22 @@
     <title>Hello World</title>
     <script id="v-main" type="x-shader/x-vertex">
 attribute vec2 position;
+attribute vec3 color;
+varying vec3 color_i;
 
 void main(void)
 {
   gl_Position = vec4(position, 0.0, 1.0);
+  color_i = color;
 }
     </script>
     <script id="f-main" type="x-shader/x-fragment">
 precision mediump float;
+varying vec3 color_i;
 
 void main(void)
 {
-  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  gl_FragColor = vec4(color_i, 1.0);
 }
     </script>
     <script>
@@ -94,14 +98,14 @@ function init_shaders()
   gl.useProgram(program);
 
   program.attr_position = gl.getAttribLocation(program, "position");
-  gl.enableVertexAttribArray(program.attr_position);
-//  program.attr_color = gl.getAttribLocation(program, "color");
+  program.attr_color = gl.getAttribLocation(program, "color");
 }
 
 function init_buffers()
 {
   buffer = gl.createBuffer(1);
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
   var vertices = [0.0, 0.0];
   for (var i = 0; i < 6; i++)
   {
@@ -110,7 +114,18 @@ function init_buffers()
   }
   vertices.push(vertices[2]);
   vertices.push(vertices[3]);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  var colors = [
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+    1, 0, 0
+    ];
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.concat(colors)), gl.STATIC_DRAW);
 }
 
 function draw()
@@ -121,6 +136,10 @@ function draw()
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.vertexAttribPointer(program.attr_position, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(program.attr_position);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(program.attr_color, 3, gl.FLOAT, false, 0, 8 * 2 * 4);
+  gl.enableVertexAttribArray(program.attr_color);
   gl.drawArrays(gl.TRIANGLE_FAN, 0, 8);
 }
     </script>
