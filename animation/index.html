@@ -40,7 +40,7 @@ function start()
   var canvas = document.getElementById("glcanvas");
   try
   {
-    gl = canvas.getContext("experimental-webgl");
+    gl = WebGLUtils.setupWebGL(canvas);
     gl.width = canvas.width;
     gl.height = canvas.height;
   }
