@@ -1,0 +1,188 @@
+<html>
+  <head>
+    <title>Animation</title>
+    <script src="../webgl-utils.js"></script>
+    <script src="../gl-matrix-v2.2.1-min.js"></script>
+    <script id="v-main" type="x-shader/x-vertex">
+uniform mat4 perspective_matrix;
+uniform mat4 modelview_matrix;
+attribute vec2 position;
+attribute vec3 color;
+varying vec3 color_i;
+
+void main(void)
+{
+  gl_Position = perspective_matrix * modelview_matrix * vec4(position, 0.0, 1.0);
+  color_i = color;
+}
+    </script>
+    <script id="f-main" type="x-shader/x-fragment">
+precision mediump float;
+varying vec3 color_i;
+
+void main(void)
+{
+  gl_FragColor = vec4(color_i, 1.0);
+}
+    </script>
+    <script>
+var gl;
+var program;
+var buffer;
+var perspective_matrix = mat4.create();
+var modelview_matrix = mat4.create();
+var rotation = 0.0;
+var last_time = 0;
+var scale = vec3.create();
+
+function start()
+{
+  var canvas = document.getElementById("glcanvas");
+  try
+  {
+    gl = canvas.getContext("experimental-webgl");
+    gl.width = canvas.width;
+    gl.height = canvas.height;
+  }
+  catch (e)
+  {
+  }
+  if (!gl)
+  {
+    alert("Could not initialize WebGL");
+  }
+  init_shaders();
+  init_buffers();
+  tick();
+}
+
+function load_shader(script_id)
+{
+  var script_obj = document.getElementById(script_id);
+  if (!script_obj)
+    return null;
+
+  var str = "";
+  var script_child = script_obj.firstChild;
+  while (script_child)
+  {
+    if (script_child.nodeType == 3)
+      str += script_child.textContent;
+    script_child = script_child.nextSibling;
+  }
+
+  var shader;
+  if (script_obj.type == "x-shader/x-fragment")
+    shader = gl.createShader(gl.FRAGMENT_SHADER);
+  else if (script_obj.type == "x-shader/x-vertex")
+    shader = gl.createShader(gl.VERTEX_SHADER);
+  else
+    return null;
+
+  gl.shaderSource(shader, str);
+  gl.compileShader(shader);
+
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+  {
+    alert(gl.getShaderInfoLog(shader));
+    return null;
+  }
+
+  return shader;
+}
+
+function init_shaders()
+{
+  var v_shader = load_shader("v-main");
+  var f_shader = load_shader("f-main");
+
+  program = gl.createProgram();
+  gl.attachShader(program, v_shader);
+  gl.attachShader(program, f_shader);
+  gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    alert("Could not link shader program!");
+
+  gl.useProgram(program);
+
+  program.attr_position = gl.getAttribLocation(program, "position");
+  program.attr_color = gl.getAttribLocation(program, "color");
+  program.uniform_perspective_matrix = gl.getUniformLocation(program, "perspective_matrix");
+  program.uniform_modelview_matrix = gl.getUniformLocation(program, "modelview_matrix");
+}
+
+function init_buffers()
+{
+  buffer = gl.createBuffer(1);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+  var vertices = [0.0, 0.0];
+  for (var i = 0; i < 6; i++)
+  {
+    vertices.push(0.8 * Math.cos(2.0 * Math.PI * i / 6.0));
+    vertices.push(0.8 * Math.sin(2.0 * Math.PI * i / 6.0));
+  }
+  vertices.push(vertices[2]);
+  vertices.push(vertices[3]);
+  var colors = [
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+    1, 0, 0
+    ];
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.concat(colors)), gl.STATIC_DRAW);
+}
+
+function draw()
+{
+  gl.viewport(0, 0, gl.width, gl.height);
+  gl.clearColor(1.0, 0.6, 0.0, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  mat4.identity(perspective_matrix);
+  mat4.identity(modelview_matrix);
+  mat4.rotateZ(modelview_matrix, modelview_matrix, rotation);
+  mat4.scale(modelview_matrix, modelview_matrix, scale);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(program.attr_position, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(program.attr_position);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(program.attr_color, 3, gl.FLOAT, false, 0, 8 * 2 * 4);
+  gl.enableVertexAttribArray(program.attr_color);
+  gl.uniformMatrix4fv(program.uniform_perspective_matrix, false, perspective_matrix);
+  gl.uniformMatrix4fv(program.uniform_modelview_matrix, false, modelview_matrix);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 8);
+}
+
+function update()
+{
+  var time_now = new Date().getTime();
+  if (last_time != 0)
+  {
+    var elapsed = time_now - last_time;
+    rotation += Math.PI / 4.0 * elapsed / 1000.0;
+    var scale_factor = Math.cos(rotation) * 0.4 + 0.6;
+    vec3.set(scale, scale_factor, scale_factor, scale_factor);
+  }
+  last_time = time_now;
+}
+
+function tick()
+{
+  requestAnimFrame(tick);
+  update();
+  draw();
+}
+    </script>
+  </head>
+  <body onload="start();">
+    <canvas id="glcanvas" width="800" height="800"></canvas>
+  </body>
+</html>
